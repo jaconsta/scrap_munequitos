@@ -71,7 +71,9 @@ for munequito_item_details in munequitos_i_want:
         chap = chapter[-1].split('-')[0].strip()[:-1]
         print(f'chapter: {chap} {chapter[1]}')
         episode_folder = f'{munequito_folder}/{chap}'
-        if not os.path.exists(episode_folder):
+        if os.path.exists(episode_folder):
+            continue
+        else:
             os.mkdir(episode_folder)
 
         chapter_path = chapter[0][:-1]
