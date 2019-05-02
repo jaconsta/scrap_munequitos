@@ -1,7 +1,9 @@
+import os
+import shutil
+
 import requests
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
-import shutil
 
 site = 'https://readms.net/'
 page = requests.get(site)
@@ -32,16 +34,44 @@ def get_li_values(x):
 x = [get_li_values(ul) for ul in soup.find_all('ul', class_='new-list')[0].children if type(ul) != NavigableString]
 
 munequitos_i_want = filter(lambda x: x['joined_name'] in expected_munequitos, x)
-munequito_page = requests.get(f'{site}{x[0]["link"]}')
-munequito_soup = BeautifulSoup(munequito_page.text, 'html.parser')
 
-munequito_img_url = munequito_soup.img.get('src')
-img_response = requests.get(f'https:{munequito_img_url}', stream=True)
+## a for is required
+# munequito_item_details = next(munequitos_i_want)
 
-with open('downloaded/first.png', 'wb') as comic_file:
-    shutil.copyfileobj(img_response.raw, comic_file)
+for munequito_item_details in munequitos_i_want:
+    # split the url for extraction and post url creation
+    munequito_url_components = munequito_item_details['link'].split('/')
+    # Create munequito image folder
+    munequito_folder = f'downloaded/{munequito_item_details["joined_name"]}'
+    episode_number = munequito_url_components[-3]
+    episode_folder = f'{munequito_folder}/{episode_number}'
 
-del img_response
+    if not os.path.exists(munequito_folder):
+        os.mkdir(munequito_folder)
+    if not os.path.exists(episode_folder):
+        os.mkdir(episode_folder)
+
+    status = 200  # Default html response code
+    page_number = 1  # It should increase for each page name
+    while status == 200:
+        munequito_url_components[-1] = str(page_number)
+        page_url = '/'.join(munequito_url_components)
+        munequito_page = requests.get(f'{site}{page_url}')
+        status = munequito_page.status_code
+        munequito_soup = BeautifulSoup(munequito_page.text, 'html.parser')
+
+        if 'Page Not Found' in munequito_soup.title.text:
+            status = 404
+            break
+
+        munequito_img_url = munequito_soup.img.get('src')
+        img_response = requests.get(f'https:{munequito_img_url}', stream=True)
+
+        with open(f'{episode_folder}/{page_number}.{munequito_img_url.split(".")[-1]}', 'wb') as page:
+            shutil.copyfileobj(img_response.raw, page)
+
+        del img_response
+        page_number += 1
 
 
 print('hello')
